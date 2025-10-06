@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MorrGolf Neo</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#19b3b5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+:root{
+  /* Modern dark palette */
+  --hue: 182;          /* default accent hue (teal) */
+  --inkL: 94%;         /* text lightness */
+  --accent: hsl(var(--hue), 65%, 48%);
+  --accent-ink: #06191a;
+  --bg: #0b1014;
+  --surface: #0f151b;
+  --card: #111922;
+  --ink: hsl(210, 30%, var(--inkL));
+  --muted: #a8b2bf;
+  --stroke: #1a2531;
+  --bar: #0e141a;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:Inter,ui-sans-serif,-apple-system,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial;background:var(--bg);color:var(--ink)}
+a{color:var(--accent)}
+.app{max-width:980px;margin:0 auto;padding:0 0 76px}
+/* Top bar */
+.appbar{position:sticky;top:0;z-index:50;height:56px;display:flex;align-items:center;gap:12px;padding:0 12px;background:var(--bar);border-bottom:1px solid var(--stroke)}
+.logo{width:30px;height:30px;border-radius:10px;border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:900}
+.brand{display:flex;align-items:center;gap:10px}
+#menuBtn{border:0;background:transparent;color:var(--ink);font-size:22px;padding:8px 10px;cursor:pointer}
+/* Drawer */
+.drawer{position:fixed;inset:0 auto 0 0;width:300px;background:var(--surface);border-right:1px solid var(--stroke);transform:translateX(-100%);transition:transform .25s ease;display:flex;flex-direction:column;z-index:60}
+.drawer.open{transform:translateX(0)}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:55}
+.drawer-header{display:flex;align-items:center;gap:12px;padding:16px;border-bottom:1px solid var(--stroke)}
+.avatar{width:44px;height:44px;border-radius:50%;background:rgba(25,179,181,.18);display:flex;align-items:center;justify-content:center;color:#9df2f3;font-weight:900}
+.drawer-title .name{font-weight:900}
+.drawer-title .sub{font-size:12px;color:var(--muted)}
+.drawer-nav{padding:8px 8px 16px;overflow:auto}
+.nav-item{width:100%;text-align:left;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid transparent;background:transparent;cursor:pointer;color:var(--ink);font-weight:600}
+.nav-item.active{background:rgba(25,179,181,.14);border-color:var(--accent);color:#9df2f3}
+.nav-ico{width:22px;text-align:center}
+.drawer-foot{margin-top:auto;padding:12px;border-top:1px solid var(--stroke);display:flex;align-items:center;justify-content:space-between}
+.tiny{font-size:11px;color:var(--muted)}
+/* Cards */
+.card{margin:12px 16px;padding:16px;border:1px solid var(--stroke);border-radius:18px;background:var(--card);box-shadow:0 10px 32px rgba(0,0,0,.28)}
+.title{font-weight:900;margin:4px 0 8px}.small{color:var(--muted);font-size:12px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.col{flex:1 1 260px}
+.input,select,input[type="number"],input[type="text"]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--stroke);background:var(--surface);color:var(--ink)}
+.btn{padding:12px 14px;border-radius:12px;border:1px solid var(--stroke);background:var(--surface);color:var(--ink);cursor:pointer;font-weight:700}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+/* Stopwatch */
+.stopwrap{position:sticky;top:56px;z-index:40;background:var(--bar);border-bottom:1px solid var(--stroke);padding:10px 12px;margin:0 0 8px}
+.stop{display:flex;align-items:center;justify-content:space-between}
+.time{font-size:44px;font-weight:900;letter-spacing:.5px}
+.pills{display:flex;gap:10px}
+.pill{padding:10px 14px;border-radius:999px;border:1px solid var(--stroke);background:var(--surface);color:var(--ink);font-weight:700;cursor:pointer}
+.pill.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+/* Exercise list */
+.ex{display:flex;align-items:center;gap:12px;border:1px solid var(--stroke);border-radius:14px;background:var(--surface);padding:10px;margin-bottom:8px}
+.thumb{width:48px;height:48px;border-radius:12px;background:#0d141b;border:1px solid var(--stroke);display:flex;align-items:center;justify-content:center;color:#98f5ce;font-weight:900}
+.badge{padding:4px 8px;border-radius:999px;background:#0d141b;border:1px solid var(--stroke);font-size:12px;color:var(--muted)}
+/* Chips */
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--stroke);background:var(--surface);padding:8px 10px;border-radius:999px;font-weight:700}
+/* Bottom nav */
+.navbar{position:fixed;inset:auto 0 0 0;height:60px;background:var(--bar);border-top:1px solid var(--stroke);display:flex;justify-content:space-around;align-items:center}
+.navbtn{background:transparent;border:0;color:var(--ink);font-weight:800;cursor:pointer}
+footer{text-align:center;margin:8px 0 72px 0}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="appbar">
+    <button id="menuBtn" aria-label="Menu">☰</button>
+    <div class="brand"><div class="logo">M</div><div class="title">MorrGolf</div></div>
+  </header>
+
+  <div class="stopwrap">
+    <div class="stop">
+      <div id="clock" class="time">00:00</div>
+      <div class="pills">
+        <button id="swStart" class="pill primary">Start</button>
+        <button id="swLap" class="pill">Lap</button>
+        <button id="swReset" class="pill">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <aside id="drawer" class="drawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div class="avatar">M</div>
+      <div class="drawer-title"><div class="name">MorrGolf</div><div class="sub">Train. Swing. Repeat.</div></div>
+    </div>
+    <nav id="drawerNav" class="drawer-nav"></nav>
+    <div class="drawer-foot">
+      <div class="tiny">Hue</div><input id="hue" type="range" min="0" max="360" value="182" style="width:120px">
+      <div class="tiny">Text</div><input id="ink" type="range" min="60" max="98" value="94" style="width:100px">
+    </div>
+  </aside>
+  <div id="scrim" class="scrim" hidden></div>
+
+  <div id="view"></div>
+  <footer class="small">© <span id="year"></span> MorrGolf</footer>
+
+  <nav class="navbar">
+    <button class="navbtn" data-tab="Home">Home</button>
+    <button class="navbtn" data-tab="Train">Train</button>
+    <button class="navbtn" data-tab="Timer">Timer</button>
+    <button class="navbtn" data-tab="Settings">Settings</button>
+  </nav>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
