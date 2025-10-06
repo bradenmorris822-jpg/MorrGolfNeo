@@ -30,6 +30,26 @@ const PLAN=[
     {name:"Mountain Climbers",group:"cardio",target:20},{name:"Band Punch-Outs",group:"upper",target:12}
   ]}
 ];
+
+// Rotating inspirational Bible verses (ESV-style paraphrases)
+// Appears on Home and in Verses view; picked deterministically by date.
+const VERSES=[
+  {ref:"Proverbs 3:5–6", text:"Trust in the LORD with all your heart, and do not lean on your own understanding. In all your ways acknowledge him, and he will make straight your paths."},
+  {ref:"Philippians 4:13", text:"I can do all things through him who strengthens me."},
+  {ref:"Isaiah 40:31", text:"They who wait for the LORD shall renew their strength; they shall mount up with wings like eagles; they shall run and not be weary; they shall walk and not faint."},
+  {ref:"Joshua 1:9", text:"Be strong and courageous. Do not be frightened, and do not be dismayed, for the LORD your God is with you wherever you go."},
+  {ref:"Psalm 23:1–3", text:"The LORD is my shepherd; I shall not want… He restores my soul. He leads me in paths of righteousness for his name’s sake."},
+  {ref:"Romans 8:31", text:"If God is for us, who can be against us?"},
+  {ref:"Hebrews 12:1–2", text:"Let us run with endurance the race set before us, looking to Jesus, the founder and perfecter of our faith."},
+  {ref:"Colossians 3:23", text:"Whatever you do, work heartily, as for the Lord and not for men."},
+  {ref:"Psalm 27:1", text:"The LORD is my light and my salvation; whom shall I fear? The LORD is the stronghold of my life; of whom shall I be afraid?"},
+  {ref:"2 Timothy 1:7", text:"God gave us a spirit not of fear but of power and love and self-control."}
+];
+function todayVerse(){
+  const d=new Date(); const key=d.getFullYear()*1000 + d.getMonth()*50 + d.getDate();
+  const i = key % VERSES.length; return VERSES[i];
+}
+
 const OPTIONAL_CARDIO=[
   {name:"Zone 2 Walk • 20 min",met:3.0,mins:20},
   {name:"Stationary Bike • 15 min",met:6.0,mins:15},
@@ -81,6 +101,10 @@ function HomeView(){
     const open=el("button",{class:"btn primary", onclick:()=>{ TAB="Train"; saveAll(); render(); }}, "Open Full Workout");
     card.append(el("div",{style:"margin-top:8px"}, open));
     v.append(card);
+// Verse of the day
+const vcard=el("div",{class:"card"}); const vv=todayVerse();
+vcard.append(el("div",{class:"small"},"VERSE OF THE DAY"), el("div",{class:"title"}, vv.ref), el("div",{class:"small"}, vv.text));
+v.append(vcard);
     // cardio chips
     const chipCard=el("div",{class:"card"}, el("div",{class:"small"},"OPTIONAL CARDIO"));
     const chips=el("div",{class:"chips"}); OPTIONAL_CARDIO.forEach(c=> chips.append(el("div",{class:"chip"}, c.name))); chipCard.append(chips); v.append(chipCard);
@@ -173,11 +197,11 @@ function SettingsView(){
 }
 
 // Navigation & rendering
-let TAB_ORDER=["Home","Train","Timer","Settings"];
+let TAB_ORDER=["Home","Train","Timer","Progress","Settings","Verses"];
 function openDrawer(){ const d=$("#drawer"), s=$("#scrim"); if(d) d.classList.add("open"); if(s) s.hidden=false; }
 function closeDrawer(){ const d=$("#drawer"), s=$("#scrim"); if(d) d.classList.remove("open"); if(s) s.hidden=true; }
 function renderDrawer(){ const nav=$("#drawerNav"); if(!nav) return; nav.innerHTML=""; TAB_ORDER.forEach(key=> nav.append(el("button",{class:"nav-item"+(TAB===key?" active":""), onclick:()=>{ TAB=key; saveAll(); closeDrawer(); render(); }}, el("span",{class:"nav-ico"}, document.createTextNode(key[0])), el("span",{}, document.createTextNode(key)))) ); }
-function render(){ const v=$("#view"); if(!v) return; v.innerHTML=""; if(TAB==="Home") v.append(HomeView()); if(TAB==="Train") v.append(TrainView()); if(TAB==="Timer") v.append(TimerView()); if(TAB==="Settings") v.append(SettingsView()); }
+function render(){ const v=$("#view"); if(!v) return; v.innerHTML=""; if(TAB==="Home") v.append(HomeView()); if(TAB==="Train") v.append(TrainView()); if(TAB==="Timer") v.append(TimerView()); if(TAB==="Settings") v.append(SettingsView()); if(TAB==="Progress") v.append(ProgressView()); if(TAB==="Verses") v.append(VersesView()); }
 
 document.addEventListener("DOMContentLoaded",()=>{
   const y=$("#year"); if(y) y.textContent=String(new Date().getFullYear());
@@ -195,3 +219,59 @@ document.addEventListener("DOMContentLoaded",()=>{
   const inkInp=$("#ink"); if(inkInp){ inkInp.value=String(inkL); inkInp.addEventListener("input",()=>{ inkL=parseInt(inkInp.value,10)||94; applyTheme(); saveAll(); }); }
   swRender(); renderDrawer(); render();
 });
+
+// Progress view: streaks, totals, calories, and a simple sparkline
+function calcStats(){
+  const totalWorkouts = history.filter(h=>h && h.completed).length;
+  // Streak: count back from today across Mon-Fri mapping
+  let streak=0;
+  // Build a shallow log by date for workouts completed (days)
+  // Also summarize calories from historyLog
+  let calories=0;
+  const repsTotal = historyLog.reduce((acc,x)=>{ calories += (x.kcal||0); return acc + (x.performed||0); }, 0);
+  // crude streak: if any history entry today, +1; iterate back across previous days having any entry
+  const dates = new Set(historyLog.map(x=> new Date(x.at).toDateString()));
+  const today = new Date(); for(let i=0;i<30;i++){ const d=new Date(today); d.setDate(today.getDate()-i); if(dates.has(d.toDateString())) streak++; else break; }
+  return {totalWorkouts, streak, calories:Math.round(calories), repsTotal};
+}
+
+function sparkline(data, width=260, height=48){
+  const c=document.createElement('canvas'); c.width=width; c.height=height;
+  const ctx=c.getContext('2d'); ctx.clearRect(0,0,width,height);
+  if(data.length===0){ ctx.fillStyle='#8894a3'; ctx.fillText('No data yet', 6, height/2); return c; }
+  const min=Math.min(...data), max=Math.max(...data); const pad=6;
+  const xStep=(width-2*pad)/Math.max(1,data.length-1);
+  ctx.strokeStyle='hsla('+hue+',65%,48%,1)'; ctx.lineWidth=2; ctx.beginPath();
+  data.forEach((v,i)=>{ const x=pad + i*xStep; const y=height-pad - ((v-min)/(max-min||1))*(height-2*pad); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
+  ctx.stroke();
+  return c;
+}
+
+function ProgressView(){
+  const v=el('div',{});
+  const s=calcStats();
+  const card=el('div',{class:'card'}, el('div',{class:'title'},'Progress'));
+  card.append(el('div',{class:'small'},`Streak: ${s.streak} day(s)`));
+  card.append(el('div',{class:'small'},`Completed days: ${s.totalWorkouts} / 5 this week`));
+  card.append(el('div',{class:'small'},`Estimated calories: ~${s.calories} kcal`));
+  card.append(el('div',{class:'small'},`Total reps logged: ${s.repsTotal}`));
+  // build a tiny series from last 20 history entries (performed count)
+  const series = historyLog.slice(0,20).reverse().map(x=>x.performed||0);
+  const spark = sparkline(series, 320, 60);
+  card.append(el('div',{style:'margin-top:8px'}, spark));
+  v.append(card);
+
+  // Recent logs
+  const h=el('div',{class:'card'}, el('div',{class:'title'},'Recent Logs'));
+  const l=el('ul'); if(historyLog.length===0) l.append(el('li',{},'No entries yet.'));
+  historyLog.slice(0,12).forEach(x=> l.append(el('li',{}, `${new Date(x.at).toLocaleString()} • ${x.name} • reps ${x.performed}${x.failure?' (failure)':''} • next ${x.nextTarget} • ~${x.kcal} kcal`)));
+  h.append(l); v.append(h);
+  return v;
+}
+
+function VersesView(){
+  const v=el('div',{});
+  const card=el('div',{class:'card'}, el('div',{class:'title'},'Verses'));
+  VERSES.forEach(x=> card.append(el('div',{class:'row'}, el('div',{class:'col'}, el('div',{class:'small'},x.ref), el('div',{}, x.text)))));
+  v.append(card); return v;
+}
